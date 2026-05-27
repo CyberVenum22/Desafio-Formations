@@ -1,1 +1,57 @@
 
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'DIO Challenge - Minha primeira Stack AWS CloudFormation criando um Servidor Web EC2.'
+
+Parameters:
+  InstanceTypeParameter:
+    Type: String
+    Default: t2.micro
+    AllowedValues:
+      - t2.micro
+      - t3.micro
+    Description: Escolha o tipo de instancia EC2.
+
+  LatestAmiId:
+    Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
+    Default: '/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2'
+
+Resources:
+  # Configuração de Segurança (Firewall)
+  WebServerSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Permitir acesso HTTP (porta 80) e SSH (porta 22)
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+
+  # Instância EC2 (O Servidor)
+  MyWebServerInstance:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      InstanceType: !Ref InstanceTypeParameter
+      ImageId: !Ref LatestAmiId
+      SecurityGroups:
+        - !Ref WebServerSecurityGroup
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          yum update -y
+          yum install -y httpd
+          systemctl start httpd
+          systemctl enable httpd
+          echo "<h1>Desafio Concluido com Sucesso na AWS via CloudFormation!</h1>" > /var/www/html/index.html
+
+Outputs:
+  InstanceId:
+    Description: ID da instancia criada
+    Value: !Ref MyWebServerInstance
+  PublicDNS:
+    Description: DNS Publico da instancia para acessar o site
+    Value: !GetAtt MyWebServerInstance.PublicDnsName # Corrigido para o atributo correto da AWS
